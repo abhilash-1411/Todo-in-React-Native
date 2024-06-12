@@ -1,117 +1,187 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
+  FlatList,
   SafeAreaView,
-  ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
-  useColorScheme,
+  TextInput,
+  TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+const COLORS = {primary: '#1f145c', white: '#fff'};
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+const App = () => {
+  const [inputText,setinputText]=useState('')
+  const [todos, setTodos] = useState([]);
+  useEffect(() =>{
+    GetTodosFromUserDevice()
+  },[]);
+  useEffect(() =>{
+   SaveTodosToUserDevice(todos);
+  },[todos]);
+  const ListItem = ({todo}) => {
+    return <View style={styles.listItem}>
+      <View style={{flex:1}}>
+    <Text style=
+    {{fontWeight:'bold',fontSize:15,color:COLORS.primary,textDecorationLine:todo?.completed?"line-through":"none"}}>
+        {todo?.task}</Text></View>
+        {
+          !todo?.completed && (
+            <TouchableOpacity style={[styles.actionIcon]} onPress={()=>MarkTodoComplete(todo?.id)}>
+            <Icon name='done' size={20} color={COLORS.primary}/>
+          </TouchableOpacity>
+)
+        }
+       
+        <TouchableOpacity style={[styles.actionIcon,,{backgroundColor:'red'}]} onPress={()=>DeleteTodo(todo?.id)}>
+          <Icon name='delete' size={20} color={COLORS.primary}/>
+        </TouchableOpacity>
     </View>
-  );
-}
-
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
+  const GetTodosFromUserDevice= async() => {
+    try{
+  const todos=await AsyncStorage.getItem('todos')
+  if(todos!=null){
+  setTodos(JSON.parse(todos))
+  }
+    }catch(e){
+   console.log(error)
+    }
+  }
+  const AddTodo=()=>{
+    if(inputText==''){
+    Alert.alert("Error",'Please input todo')
+    }
+    else{
+      console.log(inputText);
+      const newTodo={
+        id:Math.random(),
+        task:inputText,
+        completed:false
+      }
+      setTodos([...todos,newTodo]);
+      setinputText("")
+    }
+  
+  }
+  const MarkTodoComplete=(todoId)=>{
+    const newTodos=todos.map((item)=>{
+      if(item.id==todoId){
+        return {...item, completed:true}
+      }
+      return item;
+    })
+    setTodos(newTodos);
 
+  }
+  const DeleteTodo=(todoId)=>{
+    const newTodos=todos.filter((item)=>item.id!=todoId);
+    setTodos(newTodos);
+}
+const ClearTodos=()=>{
+  Alert.alert("Clear", "Clear todos ??", [{
+    text:"Yes",
+    onPress: ()=> setTodos([])
+  },
+{
+  text:"No",
+}])
+ 
+}
+const SaveTodosToUserDevice= async (todos)=>{
+  try{
+    const stringifyTodos = JSON.stringify(todos);
+    await AsyncStorage.setItem('todos', stringifyTodos);
+  } catch(e){
+     console.log(e)
+  }
+
+}
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <SafeAreaView style={{flex: 1, backgroundColor: COLORS.white}}>
+      <View style={styles.header}>
+        <Text style={{fontWeight: 'bold', fontSize: 20, color: COLORS.primary}}>
+          TODO APP
+        </Text>
+        <Icon name="delete" size={25} color="red"  onPress={ClearTodos}/>
+      </View>
+      <FlatList
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{padding: 20, paddingBottom: 100}}
+        data={todos}
+        renderItem={({item}) => <ListItem todo={item} />}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+
+      <View style={styles.footer}>
+        <View style={styles.inputContainer}>
+          <TextInput placeholder="ADD Todo" 
+          value={inputText}
+          onChangeText={text=>setinputText(text)}
+          ></TextInput>
         </View>
-      </ScrollView>
+        <TouchableOpacity onPress={AddTodo}>
+          <View style={styles.iconContainer} >
+            <Icon name="add" color={COLORS.white} size={30} />
+          </View>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
-}
-
+};
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  actionIcon:{
+    height:25,
+    width:25,
+    backgroundColor:'green',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft:5,
+    borderRadius:3
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  header: {
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    color: COLORS.white,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
-  highlight: {
-    fontWeight: '700',
+  inputContainer: {
+    backgroundColor: COLORS.white,
+    elevation: 40,
+    flex: 1,
+    height: 50,
+    marginVertical: 20,
+    marginRight: 20,
+    borderRadius: 30,
+    paddingHorizontal: 20,
+  },
+  iconContainer: {
+    height: 50,
+    width: 50,
+    backgroundColor: COLORS.primary,
+    borderRadius: 25,
+    elevation: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listItem: {
+    padding:20,
+    backgroundColor:COLORS.white,
+    flexDirection:'row',
+    elevation:12,
+    borderRadius:7,
+    marginVertical:10,
   },
 });
 
